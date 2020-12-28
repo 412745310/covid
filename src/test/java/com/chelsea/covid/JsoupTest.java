@@ -1,5 +1,6 @@
 package com.chelsea.covid;
 
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -14,6 +15,10 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.web.client.RestTemplate;
 
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
+import com.chelsea.covid.bean.Covid;
+import com.chelsea.covid.util.DateUtil;
 import com.chelsea.covid.util.HttpUtils;
 
 /**
@@ -46,9 +51,37 @@ public class JsoupTest {
         String pattern = "\\[(.*)\\]";
         Pattern reg = Pattern.compile(pattern);
         Matcher matcher = reg.matcher(text);
+        String jsonStr = "";
         if (matcher.find()) {
-            String group = matcher.group(0);
-            System.out.println(group);
+            jsonStr = matcher.group(0);
+        }
+        // 对json数据进行更进一步解析
+        // 将第一层json（省份数据）解析为bean
+        List<Covid> pCovidList = JSON.parseArray(jsonStr, Covid.class);
+        for (Covid pCovid : pCovidList) {
+            // 设置时间字段为当前时间
+            pCovid.setDatetime(DateUtil.getDateDateString2());
+            // 获取城市json字符串
+            String citysStr = pCovid.getCities();
+            // 将城市json字符串解析为bean
+            List<Covid> cCovidList = JSON.parseArray(citysStr, Covid.class);
+            for (Covid cCovid : cCovidList) {
+                cCovid.setDatetime(DateUtil.getDateDateString2());
+                cCovid.setPid(pCovid.getLocationId());
+                cCovid.setProvinceName(pCovid.getProvinceName());
+                cCovid.setProvinceShortName(pCovid.getProvinceShortName());
+                // 后续将城市疫情数据发送到kafka
+                System.out.println(cCovid);
+            }
+            String statisticsDataUrl = pCovid.getStatisticsData();
+            // 获取第一层json（省份数据）中的每天统计数据
+            String statisticsDataStr = HttpUtils.getForEntity(restTemplate, statisticsDataUrl, requestEntity, String.class, "");
+            JSONObject jsonObject = JSON.parseObject(statisticsDataStr);
+            String dataStr = jsonObject.getString("data");
+            // 将爬取解析出来的每天统计数据json字符串设置回省份bean中
+            pCovid.setStatisticsData(dataStr);
+            pCovid.setCities(null);
+            // System.out.println(pCovid);
         }
     }
 

@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.web.client.RestTemplate;
 
@@ -33,6 +34,9 @@ public class JsoupTest {
     
     @Autowired
     private RestTemplate restTemplate;
+    
+    @Autowired
+    private KafkaTemplate<?, String> kafkaTemplate;
     
     /**
      * 爬取网页内容并解析
@@ -70,8 +74,9 @@ public class JsoupTest {
                 cCovid.setPid(pCovid.getLocationId());
                 cCovid.setProvinceName(pCovid.getProvinceName());
                 cCovid.setProvinceShortName(pCovid.getProvinceShortName());
-                // 后续将城市疫情数据发送到kafka
-                System.out.println(cCovid);
+                // 将城市疫情数据发送到kafka
+                String cCovidJsonStr = JSON.toJSONString(cCovid);
+                kafkaTemplate.send("covid19", cCovidJsonStr);
             }
             String statisticsDataUrl = pCovid.getStatisticsData();
             // 获取第一层json（省份数据）中的每天统计数据
@@ -81,7 +86,9 @@ public class JsoupTest {
             // 将爬取解析出来的每天统计数据json字符串设置回省份bean中
             pCovid.setStatisticsData(dataStr);
             pCovid.setCities(null);
-            // System.out.println(pCovid);
+            // 将省份疫情数据发送到kafka
+            String pCovidJsonStr = JSON.toJSONString(pCovid);
+            kafkaTemplate.send("covid19", pCovidJsonStr);
         }
     }
 

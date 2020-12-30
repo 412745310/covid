@@ -48,5 +48,6 @@
 	</build>
   <modules>
     <module>covid-crawler</module>
+    <module>covid-process</module>
   </modules>
 </project>

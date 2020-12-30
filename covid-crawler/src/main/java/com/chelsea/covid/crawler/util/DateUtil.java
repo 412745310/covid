@@ -1,4 +1,4 @@
-package com.chelsea.covid.util;
+package com.chelsea.covid.crawler.util;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;

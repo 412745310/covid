@@ -1,4 +1,4 @@
-package com.chelsea.covid.job;
+package com.chelsea.covid.crawler.job;
 
 import java.util.Random;
 
@@ -8,7 +8,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import com.alibaba.fastjson.JSON;
-import com.chelsea.covid.bean.Materia;
+import com.chelsea.covid.crawler.bean.Materia;
 
 /**
  * 疫情物资生成定时job

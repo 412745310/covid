@@ -1,4 +1,4 @@
-package com.chelsea.covid;
+package com.chelsea.covid.crawler.job;
 
 import java.util.List;
 import java.util.regex.Matcher;
@@ -6,31 +6,28 @@ import java.util.regex.Pattern;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
-import org.junit.Test;
-import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
-import com.chelsea.covid.bean.Covid;
-import com.chelsea.covid.util.DateUtil;
-import com.chelsea.covid.util.HttpUtils;
+import com.chelsea.covid.crawler.bean.Covid;
+import com.chelsea.covid.crawler.util.DateUtil;
+import com.chelsea.covid.crawler.util.HttpUtils;
 
 /**
- * 爬虫单元测试
+ * 疫情数据爬取job
  * 
  * @author shevchenko
  *
  */
-@RunWith(SpringRunner.class)
-@SpringBootTest
-public class JsoupTest {
+@Component
+public class CrawlingJob {
     
     @Autowired
     private RestTemplate restTemplate;
@@ -38,11 +35,15 @@ public class JsoupTest {
     @Autowired
     private KafkaTemplate<?, String> kafkaTemplate;
     
+    @Scheduled(cron = "0 0 8 * * ?")
+    public void execute() {
+        crawling();
+    }
+    
     /**
-     * 爬取网页内容并解析
+     * 疫情数据爬取
      */
-    @Test
-    public void crawling() {
+    private void crawling() {
         String url = "https://ncov.dxy.cn/ncovh5/view/pneumonia";
         HttpHeaders headers = new HttpHeaders();
         headers.add("User-Agent", "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:84.0) Gecko/20100101 Firefox/84.0");

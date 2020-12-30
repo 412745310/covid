@@ -1,4 +1,4 @@
-package com.chelsea.covid.bean;
+package com.chelsea.covid.crawler.bean;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

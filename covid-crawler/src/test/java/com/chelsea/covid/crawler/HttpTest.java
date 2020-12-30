@@ -1,4 +1,4 @@
-package com.chelsea.covid;
+package com.chelsea.covid.crawler;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -9,7 +9,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.web.client.RestTemplate;
 
-import com.chelsea.covid.util.HttpUtils;
+import com.chelsea.covid.crawler.util.HttpUtils;
 
 /**
  * http测试

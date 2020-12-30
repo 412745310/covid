@@ -1,4 +1,4 @@
-package com.chelsea.covid;
+package com.chelsea.covid.crawler;
 
 import java.nio.charset.Charset;
 import java.util.List;

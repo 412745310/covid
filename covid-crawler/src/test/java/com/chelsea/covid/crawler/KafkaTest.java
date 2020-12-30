@@ -1,4 +1,4 @@
-package com.chelsea.covid;
+package com.chelsea.covid.crawler;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;

@@ -22,15 +22,15 @@ public class Covid {
     // 城市名称
     private String cityName;
     // 当前确诊人数
-    private String currentConfirmedCount;
+    private Integer currentConfirmedCount;
     // 累计确认人数
-    private String confirmedCount;
+    private Integer confirmedCount;
     // 疑似病例人数
-    private String suspectedCount;
+    private Integer suspectedCount;
     // 治愈人数
-    private String curedCount;
+    private Integer curedCount;
     // 死亡人数
-    private String deadCount;
+    private Integer deadCount;
     // 位置id
     private String locationId;
     // 省位置id

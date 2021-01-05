@@ -8,7 +8,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import com.alibaba.fastjson.JSON;
-import com.chelsea.covid.crawler.bean.Materia;
+import com.chelsea.covid.common.MaterialSourceConst;
+import com.chelsea.covid.domain.Materia;
 
 /**
  * 疫情物资生成定时job
@@ -20,7 +21,7 @@ import com.chelsea.covid.crawler.bean.Materia;
 public class MateriaGeneratorJob {
 
     private String[] wzmc = new String[] {"N95口罩/个", "医用外科口罩/个", "84消毒液/瓶", "电子体温计/个", "一次性手套/副", "护目镜/副", "医用防护服/套"};
-    private String[] wzly = new String[] {"采购", "下拨", "捐赠", "消耗", "需求"};
+    private String[] wzly = new String[] {MaterialSourceConst.CAIGOU, MaterialSourceConst.XIABO, MaterialSourceConst.JUANZENG, MaterialSourceConst.XIAOHAO, MaterialSourceConst.XUQIU};
     
     @Autowired
     private KafkaTemplate<?, String> kafkaTemplate;

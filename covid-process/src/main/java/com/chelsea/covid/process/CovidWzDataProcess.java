@@ -2,14 +2,22 @@ package com.chelsea.covid.process;
 
 import java.util.Properties;
 
+import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
+import org.apache.flink.api.java.tuple.Tuple2;
+import org.apache.flink.api.java.tuple.Tuple6;
 import org.apache.flink.runtime.state.filesystem.FsStateBackend;
 import org.apache.flink.streaming.api.CheckpointingMode;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
+import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.environment.CheckpointConfig.ExternalizedCheckpointCleanup;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
+
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
+import com.chelsea.covid.common.MaterialSourceConst;
 
 /**
  * 疫情物资数据处理
@@ -18,7 +26,7 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
  *
  */
 public class CovidWzDataProcess {
-    
+
     public static void main(String[] args) throws Exception {
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment().setParallelism(1);
         // 开启CK，指定使用FsStateBackend
@@ -65,8 +73,56 @@ public class CovidWzDataProcess {
         // 设置kafka消费者偏移量是基于CK成功时提交
         consumer.setCommitOffsetsOnCheckpoints(true);
         DataStreamSource<String> ds = env.addSource(consumer);
-        ds.print();
+        // 将json字符串{name:xx, from:xx, count:xx}转换为元组<String, <Integer, Integer, Integer, Integer, Integer, Integer>>
+        SingleOutputStreamOperator<Tuple2<String, Tuple6<Integer, Integer, Integer, Integer, Integer, Integer>>> wzDs =
+                ds.map(new MapFunction<String, Tuple2<String, Tuple6<Integer, Integer, Integer, Integer, Integer, Integer>>>() {
+
+                    private static final long serialVersionUID = 1L;
+
+                    @Override
+                    public Tuple2<String, Tuple6<Integer, Integer, Integer, Integer, Integer, Integer>> map(String jsonStr)
+                            throws Exception {
+                        JSONObject jsonObj = JSON.parseObject(jsonStr);
+                        String name = jsonObj.getString("name");
+                        String from = jsonObj.getString("from");
+                        Integer count = jsonObj.getInteger("count");
+                        return createWzTuple(name, from, count);
+                    }
+                });
+        wzDs.print();
         env.execute();
     }
-    
+
+    /**
+     * 构建物资元组数据
+     * 
+     * @param name
+     * @param from
+     * @param count
+     */
+    public static Tuple2<String, Tuple6<Integer, Integer, Integer, Integer, Integer, Integer>> createWzTuple(String name, String from, Integer count) {
+        Tuple6<Integer, Integer, Integer, Integer, Integer, Integer> tuple;
+        switch (from) {
+            case MaterialSourceConst.CAIGOU:
+                tuple = new Tuple6<>(count, 0, 0, 0, 0, count);
+                break;
+            case MaterialSourceConst.XIABO:
+                tuple = new Tuple6<>(0, count, 0, 0, 0, count);
+                break;
+            case MaterialSourceConst.JUANZENG:
+                tuple = new Tuple6<>(0, 0, count, 0, 0, count);
+                break;
+            case MaterialSourceConst.XIAOHAO:
+                tuple = new Tuple6<>(0, 0, 0, -count, 0, -count);
+                break;
+            case MaterialSourceConst.XUQIU:
+                tuple = new Tuple6<>(0, 0, 0, 0, -count, -count);
+                break;
+            default:
+                tuple = new Tuple6<>();
+                break;
+        }
+        return new Tuple2<>(name, tuple);
+    }
+
 }

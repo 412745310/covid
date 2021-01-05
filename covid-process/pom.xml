@@ -29,6 +29,16 @@
 	</properties>
 	<dependencies>
 		<dependency>
+			<groupId>com.chelsea</groupId>
+			<artifactId>covid-common</artifactId>
+			<version>0.0.1-SNAPSHOT</version>
+		</dependency>
+		<dependency>
+			<groupId>com.chelsea</groupId>
+			<artifactId>covid-domain</artifactId>
+			<version>0.0.1-SNAPSHOT</version>
+		</dependency>
+		<dependency>
 			<groupId>org.apache.flink</groupId>
 			<artifactId>flink-java</artifactId>
 			<version>${flink.version}</version>

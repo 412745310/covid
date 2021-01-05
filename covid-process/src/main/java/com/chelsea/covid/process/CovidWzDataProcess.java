@@ -3,15 +3,19 @@ package com.chelsea.covid.process;
 import java.util.Properties;
 
 import org.apache.flink.api.common.functions.MapFunction;
+import org.apache.flink.api.common.functions.RichMapFunction;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
+import org.apache.flink.api.common.state.ValueState;
+import org.apache.flink.api.common.state.ValueStateDescriptor;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.tuple.Tuple6;
+import org.apache.flink.configuration.Configuration;
 import org.apache.flink.runtime.state.filesystem.FsStateBackend;
 import org.apache.flink.streaming.api.CheckpointingMode;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
-import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.environment.CheckpointConfig.ExternalizedCheckpointCleanup;
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 
@@ -89,10 +93,67 @@ public class CovidWzDataProcess {
                         return createWzTuple(name, from, count);
                     }
                 });
-        wzDs.print();
+//        wzDs.print();
+        // 将元组按照key进行聚合
+        SingleOutputStreamOperator<Tuple2<String, Tuple6<Integer, Integer, Integer, Integer, Integer, Integer>>> map =
+                wzDs.keyBy(0).map(new RichMapFunction<Tuple2<String,Tuple6<Integer,Integer,Integer,Integer,Integer,Integer>>, Tuple2<String,Tuple6<Integer,Integer,Integer,Integer,Integer,Integer>>>() {
+
+                    private static final long serialVersionUID = 1L;
+                    
+                    private ValueState<Integer> caigouValueState = null;
+                    private ValueState<Integer> xiaboValueState = null;
+                    private ValueState<Integer> juanzengValueState = null;
+                    private ValueState<Integer> xiaohaoValueState = null;
+                    private ValueState<Integer> xuqiuValueState = null;
+                    private ValueState<Integer> kucunValueState = null;
+                    
+                    @Override
+                    public void open(Configuration parameters) throws Exception {
+                        ValueStateDescriptor<Integer> caigouValueStateDescriptor = new ValueStateDescriptor<>("caigou", Integer.class, 0);
+                        caigouValueState = getRuntimeContext().getState(caigouValueStateDescriptor);
+                        
+                        ValueStateDescriptor<Integer> xiaboValueStateDescriptor = new ValueStateDescriptor<>("xiabo", Integer.class, 0);
+                        xiaboValueState = getRuntimeContext().getState(xiaboValueStateDescriptor);
+                        
+                        ValueStateDescriptor<Integer> juanzengValueStateDescriptor = new ValueStateDescriptor<>("juanzeng", Integer.class, 0);
+                        juanzengValueState = getRuntimeContext().getState(juanzengValueStateDescriptor);
+                        
+                        ValueStateDescriptor<Integer> xiaohaoValueStateDescriptor = new ValueStateDescriptor<>("xiaohao", Integer.class, 0);
+                        xiaohaoValueState = getRuntimeContext().getState(xiaohaoValueStateDescriptor);
+                        
+                        ValueStateDescriptor<Integer> xuqiuValueStateDescriptor = new ValueStateDescriptor<>("xuqiu", Integer.class, 0);
+                        xuqiuValueState = getRuntimeContext().getState(xuqiuValueStateDescriptor);
+                        
+                        ValueStateDescriptor<Integer> kucunValueStateDescriptor = new ValueStateDescriptor<>("kucun", Integer.class, 0);
+                        kucunValueState = getRuntimeContext().getState(kucunValueStateDescriptor);
+                    }
+
+                    @Override
+                    public Tuple2<String, Tuple6<Integer, Integer, Integer, Integer, Integer, Integer>> map(
+                            Tuple2<String, Tuple6<Integer, Integer, Integer, Integer, Integer, Integer>> in) throws Exception {
+                        Integer caigouValue = caigouValueState.value();
+                        caigouValueState.update(in.f1.f0 + caigouValue);
+                        
+                        Integer xiaboValue = xiaboValueState.value();
+                        xiaboValueState.update(in.f1.f1 + xiaboValue);
+                        
+                        Integer juanzengValue = juanzengValueState.value();
+                        juanzengValueState.update(in.f1.f2 + juanzengValue);
+                        
+                        Integer xiaohaoValue = xiaohaoValueState.value();
+                        xiaohaoValueState.update(in.f1.f3 + xiaohaoValue);
+                        
+                        Integer xuqiuValue = xuqiuValueState.value();
+                        xuqiuValueState.update(in.f1.f4 + xuqiuValue);
+                        
+                        Integer kucunValue = kucunValueState.value();
+                        kucunValueState.update(in.f1.f5 + kucunValue);
+                        return new Tuple2<>(in.f0, new Tuple6<>(caigouValueState.value(), xiaboValueState.value(), juanzengValueState.value(),xiaohaoValueState.value(),xuqiuValueState.value(),kucunValueState.value()));
+                    }});
+        map.print();
         env.execute();
     }
-
+    
     /**
      * 构建物资元组数据
      * 
@@ -124,5 +185,5 @@ public class CovidWzDataProcess {
         }
         return new Tuple2<>(name, tuple);
     }
-
+    
 }

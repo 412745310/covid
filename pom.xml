@@ -49,5 +49,7 @@
   <modules>
     <module>covid-crawler</module>
     <module>covid-process</module>
+    <module>covid-domain</module>
+    <module>covid-common</module>
   </modules>
 </project>

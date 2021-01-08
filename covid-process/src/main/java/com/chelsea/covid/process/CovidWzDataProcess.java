@@ -16,12 +16,16 @@ import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.CheckpointConfig.ExternalizedCheckpointCleanup;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.chelsea.covid.common.MaterialSourceConst;
+import com.chelsea.covid.domain.CovidWz;
+import com.chelsea.covid.process.service.CovidWzService;
+import com.chelsea.covid.process.util.SpringUtil;
 
 /**
  * 疫情物资数据处理
@@ -95,8 +99,8 @@ public class CovidWzDataProcess {
                 });
 //        wzDs.print();
         // 将元组按照key进行聚合
-        SingleOutputStreamOperator<Tuple2<String, Tuple6<Integer, Integer, Integer, Integer, Integer, Integer>>> map =
-                wzDs.keyBy(0).map(new RichMapFunction<Tuple2<String,Tuple6<Integer,Integer,Integer,Integer,Integer,Integer>>, Tuple2<String,Tuple6<Integer,Integer,Integer,Integer,Integer,Integer>>>() {
+        SingleOutputStreamOperator<CovidWz> wzMap =
+                wzDs.keyBy(0).map(new RichMapFunction<Tuple2<String,Tuple6<Integer,Integer,Integer,Integer,Integer,Integer>>, CovidWz>() {
 
                     private static final long serialVersionUID = 1L;
                     
@@ -129,7 +133,7 @@ public class CovidWzDataProcess {
                     }
 
                     @Override
-                    public Tuple2<String, Tuple6<Integer, Integer, Integer, Integer, Integer, Integer>> map(
+                    public CovidWz map(
                             Tuple2<String, Tuple6<Integer, Integer, Integer, Integer, Integer, Integer>> in) throws Exception {
                         Integer caigouValue = caigouValueState.value();
                         caigouValueState.update(in.f1.f0 + caigouValue);
@@ -148,9 +152,18 @@ public class CovidWzDataProcess {
                         
                         Integer kucunValue = kucunValueState.value();
                         kucunValueState.update(in.f1.f5 + kucunValue);
-                        return new Tuple2<>(in.f0, new Tuple6<>(caigouValueState.value(), xiaboValueState.value(), juanzengValueState.value(),xiaohaoValueState.value(),xuqiuValueState.value(),kucunValueState.value()));
+                        
+                        CovidWz covidWz = new CovidWz();
+                        covidWz.setName(in.f0);
+                        covidWz.setCaigou(caigouValueState.value());
+                        covidWz.setXiabo(xiaboValueState.value());
+                        covidWz.setJuanzeng(juanzengValueState.value());
+                        covidWz.setXiaohao(xiaohaoValueState.value());
+                        covidWz.setXuqiu(xuqiuValueState.value());
+                        covidWz.setKucun(kucunValueState.value());
+                        return covidWz;
                     }});
-        map.print();
+        wzMap.addSink(new MysqlSinkFunction());
         env.execute();
     }
     
@@ -184,6 +197,27 @@ public class CovidWzDataProcess {
                 break;
         }
         return new Tuple2<>(name, tuple);
+    }
+    
+    static class MysqlSinkFunction extends RichSinkFunction<CovidWz> {
+
+        private static final long serialVersionUID = 1L;
+        private static final CovidWzService covidWzService = SpringUtil.getInstance().getBean(CovidWzService.class);
+
+        @Override
+        public void open(Configuration parameters) throws Exception {
+            System.out.println("初始化方法，每个task线程只执行一次");
+        }
+
+        @Override
+        public void close() throws Exception {
+            System.out.println("资源回收方法，每个task线程只执行一次");
+        }
+        
+        @Override
+        public void invoke(CovidWz value) throws Exception {
+            covidWzService.addCovidWz(value);
+        }
     }
     
 }

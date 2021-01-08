@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.chelsea.covid.process.dao.CovidWzDao">
+
+	<insert id="addCovidWz" parameterType="com.chelsea.covid.domain.CovidWz">
+		insert into covid_wz (name, caigou, xiabo, juanzeng, xiaohao, xuqiu, kucun)
+		values(#{name}, #{caigou}, #{xiabo}, #{juanzeng}, #{xiaohao}, #{xuqiu}, #{kucun})
+		ON DUPLICATE KEY UPDATE
+		name = #{name}, caigou = #{caigou}, xiabo = #{xiabo}, juanzeng = #{juanzeng}, xiaohao = #{xiaohao}, 
+		xuqiu = #{xuqiu}, kucun = #{kucun}
+	</insert>
+
+</mapper>

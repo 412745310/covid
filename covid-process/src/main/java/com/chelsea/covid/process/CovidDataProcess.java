@@ -1,15 +1,24 @@
 package com.chelsea.covid.process;
 
+import java.util.List;
 import java.util.Properties;
 
+import org.apache.flink.api.common.functions.FilterFunction;
+import org.apache.flink.api.common.functions.FlatMapFunction;
+import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.runtime.state.filesystem.FsStateBackend;
 import org.apache.flink.streaming.api.CheckpointingMode;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
+import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.CheckpointConfig.ExternalizedCheckpointCleanup;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
+import org.apache.flink.util.Collector;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
+
+import com.alibaba.fastjson.JSON;
+import com.chelsea.covid.domain.Covid;
 
 /**
  * 疫情数据处理
@@ -64,8 +73,55 @@ public class CovidDataProcess {
         FlinkKafkaConsumer<String> consumer = new FlinkKafkaConsumer<>("covid19", new SimpleStringSchema(), prop);
         // 设置kafka消费者偏移量是基于CK成功时提交
         consumer.setCommitOffsetsOnCheckpoints(true);
-        DataStreamSource<String> ds = env.addSource(consumer);
-        ds.print();
+        DataStreamSource<String> covidStrDs = env.addSource(consumer);
+        SingleOutputStreamOperator<Covid> covidMapDs = covidStrDs.map(new MapFunction<String, Covid>() {
+
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public Covid map(String line) throws Exception {
+                Covid covid = JSON.parseObject(line, Covid.class);
+                return covid;
+                
+            }});
+        // 分离出省份数据
+        SingleOutputStreamOperator<Covid> provinceDs = covidMapDs.filter(new FilterFunction<Covid>() {
+            
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public boolean filter(Covid covid) throws Exception {
+                return covid.getStatisticsData() != null;
+            }
+        });
+        // 分离出城市数据
+        SingleOutputStreamOperator<Covid> cityDs = covidMapDs.filter(new FilterFunction<Covid>() {
+            
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public boolean filter(Covid covid) throws Exception {
+                return covid.getStatisticsData() == null;
+            }
+        });
+        // 分离出各省份每天的统计数据
+        SingleOutputStreamOperator<Covid> statisticsDs = provinceDs.flatMap(new FlatMapFunction<Covid, Covid>() {
+
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public void flatMap(Covid covid, Collector<Covid> out) throws Exception {
+                String statisticsData = covid.getStatisticsData();
+                List<Covid> covidList = JSON.parseArray(statisticsData, Covid.class);
+                for (Covid c : covidList) {
+                    c.setProvinceShortName(covid.getProvinceShortName());
+                    c.setLocationId(covid.getLocationId());
+                    out.collect(c);
+                }
+            }});
+        //provinceDs.print();
+        //cityDs.print();
+        statisticsDs.print();
         env.execute();
     }    
 }

@@ -29,7 +29,7 @@ public class MateriaGeneratorJob {
     /**
      * 疫情物资随机生成
      */
-    @Scheduled(cron = "0/5 * * * * ?")
+    @Scheduled(cron = "0 0 8 * * ?")
     public void execute() {
         generator();
     }

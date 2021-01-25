@@ -6,7 +6,10 @@ import java.util.Properties;
 import org.apache.flink.api.common.functions.FilterFunction;
 import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.api.common.functions.MapFunction;
+import org.apache.flink.api.common.functions.ReduceFunction;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
+import org.apache.flink.api.java.functions.KeySelector;
+import org.apache.flink.api.java.tuple.Tuple3;
 import org.apache.flink.runtime.state.filesystem.FsStateBackend;
 import org.apache.flink.streaming.api.CheckpointingMode;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
@@ -119,9 +122,118 @@ public class CovidDataProcess {
                     out.collect(c);
                 }
             }});
-        //provinceDs.print();
-        //cityDs.print();
-        statisticsDs.print();
+        
+        // 统计分析 : 全国疫情汇总信息（按照日期分组）：现有确诊，累计确诊，现有疑似，累计治愈，累计死亡
+        SingleOutputStreamOperator<Covid> result1 = provinceDs.keyBy("datetime").reduce(new ReduceFunction<Covid>() {
+            
+            private static final long serialVersionUID = 1L;
+            private Integer currentConfirmedCountOld = 0;
+            private Integer confirmedCountOld = 0;
+            private Integer suspectedCountOld = 0;
+            private Integer curedCountOld = 0;
+            private Integer deadCountOld = 0;
+
+            @Override
+            public Covid reduce(Covid oldCovid, Covid newCovid) throws Exception {
+                Covid covid = new Covid();
+                if (oldCovid != null) {
+                    currentConfirmedCountOld = oldCovid.getCurrentConfirmedCount();
+                    confirmedCountOld = oldCovid.getConfirmedCount();
+                    suspectedCountOld = oldCovid.getSuspectedCount();
+                    curedCountOld = oldCovid.getCuredCount();
+                    deadCountOld = oldCovid.getDeadCount();
+                }
+                if (newCovid != null) {
+                    covid.setDatetime(newCovid.getDatetime());
+                    covid.setCurrentConfirmedCount(newCovid.getCurrentConfirmedCount() + currentConfirmedCountOld);
+                    covid.setConfirmedCount(newCovid.getConfirmedCount() + confirmedCountOld);
+                    covid.setSuspectedCount(newCovid.getSuspectedCount() + suspectedCountOld);
+                    covid.setCuredCount(newCovid.getCuredCount() + curedCountOld);
+                    covid.setDeadCount(newCovid.getDeadCount() + deadCountOld);
+                }
+                return covid;
+            }
+        });
+        // 统计分析：全国疫情趋势（按照日期分组）
+        SingleOutputStreamOperator<Covid> result2 = statisticsDs.keyBy("dateId").reduce(new ReduceFunction<Covid>() {
+            
+            private static final long serialVersionUID = 1L;
+            private Integer confirmedIncrOld = 0;
+            private Integer confirmedCountOld = 0;
+            private Integer suspectedCountOld = 0;
+            private Integer curedCountOld = 0;
+            private Integer deadCountOld = 0;
+
+            @Override
+            public Covid reduce(Covid oldCovid, Covid newCovid) throws Exception {
+                Covid covid = new Covid();
+                if (oldCovid != null) {
+                    confirmedIncrOld = oldCovid.getConfirmedIncr();
+                    confirmedCountOld = oldCovid.getConfirmedCount();
+                    suspectedCountOld = oldCovid.getSuspectedCount();
+                    curedCountOld = oldCovid.getCuredCount();
+                    deadCountOld = oldCovid.getDeadCount();
+                }
+                if (newCovid != null) {
+                    covid.setDateId(newCovid.getDateId());
+                    covid.setConfirmedIncr(newCovid.getConfirmedIncr() + confirmedIncrOld);
+                    covid.setConfirmedCount(newCovid.getConfirmedCount() + confirmedCountOld);
+                    covid.setSuspectedCount(newCovid.getSuspectedCount() + suspectedCountOld);
+                    covid.setCuredCount(newCovid.getCuredCount() + curedCountOld);
+                    covid.setDeadCount(newCovid.getDeadCount() + deadCountOld);
+                }
+                return covid;
+            }
+        });
+        // 统计分析：境外输入排行（按照日期省份分组）
+        SingleOutputStreamOperator<Covid> result3 = cityDs.filter(new FilterFunction<Covid>() {
+            
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public boolean filter(Covid covid) throws Exception {
+                return "境外输入".equals(covid.getCityName());
+            }
+        })
+        .keyBy(new KeySelector<Covid, Tuple3<String, String, String>>(){
+
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public Tuple3<String, String, String> getKey(Covid covid) throws Exception {
+                return new Tuple3<>(covid.getDatetime(), covid.getProvinceShortName(), covid.getPid());
+            }})
+        .reduce(new ReduceFunction<Covid>() {
+            
+            private static final long serialVersionUID = 1L;
+            private Integer confirmedCountOld = 0;
+
+            @Override
+            public Covid reduce(Covid oldCovid, Covid newCovid) throws Exception {
+                Covid covid = new Covid();
+                if (oldCovid != null) {
+                    confirmedCountOld = oldCovid.getConfirmedCount();
+                }
+                if (newCovid != null) {
+                    covid.setDatetime(newCovid.getDatetime());
+                    covid.setProvinceShortName(newCovid.getProvinceShortName());
+                    covid.setPid(newCovid.getPid());
+                    covid.setConfirmedCount(newCovid.getConfirmedCount() + confirmedCountOld);
+                }
+                return covid;
+            }
+        });
+        // 统计分析：统计北京市的累计确诊地图
+        SingleOutputStreamOperator<Covid> result4 = cityDs.filter(new FilterFunction<Covid>() {
+            
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public boolean filter(Covid covid) throws Exception {
+                return "北京".equals(covid.getProvinceShortName());
+            }
+        });
+        result4.print();
         env.execute();
     }    
 }

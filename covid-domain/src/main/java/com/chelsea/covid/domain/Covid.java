@@ -25,6 +25,8 @@ public class Covid {
     private Integer currentConfirmedCount;
     // 累计确认人数
     private Integer confirmedCount;
+    // 新增确诊人数
+    private Integer confirmedIncr;
     // 疑似病例人数
     private Integer suspectedCount;
     // 治愈人数
@@ -41,5 +43,7 @@ public class Covid {
     private String cities;
     // 爬取时间
     private String datetime;
+    // 数据时间
+    private String dateId;
 
 }

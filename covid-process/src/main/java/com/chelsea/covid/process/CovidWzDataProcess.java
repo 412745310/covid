@@ -3,10 +3,8 @@ package com.chelsea.covid.process;
 import java.util.Properties;
 
 import org.apache.flink.api.common.functions.MapFunction;
-import org.apache.flink.api.common.functions.RichMapFunction;
+import org.apache.flink.api.common.functions.ReduceFunction;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
-import org.apache.flink.api.common.state.ValueState;
-import org.apache.flink.api.common.state.ValueStateDescriptor;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.tuple.Tuple6;
 import org.apache.flink.configuration.Configuration;
@@ -97,72 +95,37 @@ public class CovidWzDataProcess {
                         return createWzTuple(name, from, count);
                     }
                 });
-//        wzDs.print();
-        // 将元组按照key进行聚合
-        SingleOutputStreamOperator<CovidWz> wzMap =
-                wzDs.keyBy(0).map(new RichMapFunction<Tuple2<String,Tuple6<Integer,Integer,Integer,Integer,Integer,Integer>>, CovidWz>() {
-
+        
+        SingleOutputStreamOperator<Tuple2<String, Tuple6<Integer, Integer, Integer, Integer, Integer, Integer>>> wzReduce =
+                wzDs.keyBy(0).reduce(new ReduceFunction<Tuple2<String,Tuple6<Integer,Integer,Integer,Integer,Integer,Integer>>>() {
+                    
                     private static final long serialVersionUID = 1L;
-                    
-                    private ValueState<Integer> caigouValueState = null;
-                    private ValueState<Integer> xiaboValueState = null;
-                    private ValueState<Integer> juanzengValueState = null;
-                    private ValueState<Integer> xiaohaoValueState = null;
-                    private ValueState<Integer> xuqiuValueState = null;
-                    private ValueState<Integer> kucunValueState = null;
-                    
-                    @Override
-                    public void open(Configuration parameters) throws Exception {
-                        ValueStateDescriptor<Integer> caigouValueStateDescriptor = new ValueStateDescriptor<>("caigou", Integer.class, 0);
-                        caigouValueState = getRuntimeContext().getState(caigouValueStateDescriptor);
-                        
-                        ValueStateDescriptor<Integer> xiaboValueStateDescriptor = new ValueStateDescriptor<>("xiabo", Integer.class, 0);
-                        xiaboValueState = getRuntimeContext().getState(xiaboValueStateDescriptor);
-                        
-                        ValueStateDescriptor<Integer> juanzengValueStateDescriptor = new ValueStateDescriptor<>("juanzeng", Integer.class, 0);
-                        juanzengValueState = getRuntimeContext().getState(juanzengValueStateDescriptor);
-                        
-                        ValueStateDescriptor<Integer> xiaohaoValueStateDescriptor = new ValueStateDescriptor<>("xiaohao", Integer.class, 0);
-                        xiaohaoValueState = getRuntimeContext().getState(xiaohaoValueStateDescriptor);
-                        
-                        ValueStateDescriptor<Integer> xuqiuValueStateDescriptor = new ValueStateDescriptor<>("xuqiu", Integer.class, 0);
-                        xuqiuValueState = getRuntimeContext().getState(xuqiuValueStateDescriptor);
-                        
-                        ValueStateDescriptor<Integer> kucunValueStateDescriptor = new ValueStateDescriptor<>("kucun", Integer.class, 0);
-                        kucunValueState = getRuntimeContext().getState(kucunValueStateDescriptor);
-                    }
 
                     @Override
-                    public CovidWz map(
-                            Tuple2<String, Tuple6<Integer, Integer, Integer, Integer, Integer, Integer>> in) throws Exception {
-                        Integer caigouValue = caigouValueState.value();
-                        caigouValueState.update(in.f1.f0 + caigouValue);
-                        
-                        Integer xiaboValue = xiaboValueState.value();
-                        xiaboValueState.update(in.f1.f1 + xiaboValue);
-                        
-                        Integer juanzengValue = juanzengValueState.value();
-                        juanzengValueState.update(in.f1.f2 + juanzengValue);
-                        
-                        Integer xiaohaoValue = xiaohaoValueState.value();
-                        xiaohaoValueState.update(in.f1.f3 + xiaohaoValue);
-                        
-                        Integer xuqiuValue = xuqiuValueState.value();
-                        xuqiuValueState.update(in.f1.f4 + xuqiuValue);
-                        
-                        Integer kucunValue = kucunValueState.value();
-                        kucunValueState.update(in.f1.f5 + kucunValue);
-                        
-                        CovidWz covidWz = new CovidWz();
-                        covidWz.setName(in.f0);
-                        covidWz.setCaigou(caigouValueState.value());
-                        covidWz.setXiabo(xiaboValueState.value());
-                        covidWz.setJuanzeng(juanzengValueState.value());
-                        covidWz.setXiaohao(xiaohaoValueState.value());
-                        covidWz.setXuqiu(xuqiuValueState.value());
-                        covidWz.setKucun(kucunValueState.value());
-                        return covidWz;
-                    }});
+                    public Tuple2<String, Tuple6<Integer, Integer, Integer, Integer, Integer, Integer>> reduce(
+                            Tuple2<String, Tuple6<Integer, Integer, Integer, Integer, Integer, Integer>> cur,
+                            Tuple2<String, Tuple6<Integer, Integer, Integer, Integer, Integer, Integer>> news) throws Exception {
+                        Tuple6<Integer, Integer, Integer, Integer, Integer, Integer> wzCount = 
+                                new Tuple6<>(cur.f1.f0 + news.f1.f0, cur.f1.f1 + news.f1.f1, cur.f1.f2 + news.f1.f2, cur.f1.f3 + news.f1.f3, cur.f1.f4 + news.f1.f4, cur.f1.f5 + news.f1.f5);
+                        return new Tuple2<>(cur.f0, wzCount);
+                    }
+                });
+        SingleOutputStreamOperator<CovidWz> wzMap = wzReduce.map(new MapFunction<Tuple2<String,Tuple6<Integer,Integer,Integer,Integer,Integer,Integer>>, CovidWz>() {
+
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public CovidWz map(Tuple2<String, Tuple6<Integer, Integer, Integer, Integer, Integer, Integer>> tuple) throws Exception {
+              CovidWz covidWz = new CovidWz();
+              covidWz.setName(tuple.f0);
+              covidWz.setCaigou(tuple.f1.f0);
+              covidWz.setXiabo(tuple.f1.f1);
+              covidWz.setJuanzeng(tuple.f1.f2);
+              covidWz.setXiaohao(tuple.f1.f3);
+              covidWz.setXuqiu(tuple.f1.f4);
+              covidWz.setKucun(tuple.f1.f5);
+              return covidWz;
+            }});
         wzMap.addSink(new MysqlSinkFunction());
         env.execute();
     }

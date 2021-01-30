@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.chelsea.covid.process.dao.CovidDao">
+
+	<insert id="addCovid1" parameterType="com.chelsea.covid.domain.Covid">
+		insert into covid_1 (Datetime, CurrentConfirmedCount, ConfirmedCount, SuspectedCount, CuredCount, DeadCount)
+		values(#{datetime}, #{currentConfirmedCount}, #{confirmedCount}, #{suspectedCount}, #{curedCount}, #{deadCount})
+		ON DUPLICATE KEY UPDATE
+		CurrentConfirmedCount = #{currentConfirmedCount}, ConfirmedCount = #{confirmedCount}, 
+		SuspectedCount = #{suspectedCount}, CuredCount = #{curedCount}, DeadCount = #{deadCount}
+	</insert>
+	
+	<insert id="addCovid2" parameterType="com.chelsea.covid.domain.Covid">
+		insert into covid_2 (DateId, ConfirmedIncr, ConfirmedCount, SuspectedCount, CuredCount, DeadCount)
+		values(#{dateId}, #{confirmedIncr}, #{confirmedCount}, #{suspectedCount}, #{curedCount}, #{deadCount})
+		ON DUPLICATE KEY UPDATE
+		ConfirmedIncr = #{confirmedIncr}, ConfirmedCount = #{confirmedCount}, 
+		SuspectedCount = #{suspectedCount}, CuredCount = #{curedCount}, DeadCount = #{deadCount}
+	</insert>
+	
+	<insert id="addCovid3" parameterType="com.chelsea.covid.domain.Covid">
+		insert into covid_3 (Datetime, ProvinceShortName, Pid, ConfirmedCount)
+		values(#{datetime}, #{provinceShortName}, #{pid}, #{confirmedCount})
+		ON DUPLICATE KEY UPDATE
+		Pid = #{pid}, ConfirmedCount = #{confirmedCount}
+	</insert>
+	
+	<insert id="addCovid4" parameterType="com.chelsea.covid.domain.Covid">
+		insert into covid_4 (Datetime, CurrentConfirmedCount, ConfirmedCount, SuspectedCount, CuredCount, DeadCount, LocationId, ProvinceShortName, CityName)
+		values(#{datetime}, #{currentConfirmedCount}, #{confirmedCount}, #{suspectedCount}, #{curedCount}, #{deadCount}, #{locationId}, #{provinceShortName}, #{cityName})
+		ON DUPLICATE KEY UPDATE
+		CurrentConfirmedCount = #{currentConfirmedCount}, ConfirmedCount = #{confirmedCount}, 
+		SuspectedCount = #{suspectedCount}, CuredCount = #{curedCount}, DeadCount = #{deadCount},
+		ProvinceShortName = #{provinceShortName}, CityName = #{cityName}
+	</insert>
+	
+</mapper>

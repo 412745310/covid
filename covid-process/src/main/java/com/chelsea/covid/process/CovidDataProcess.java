@@ -10,18 +10,22 @@ import org.apache.flink.api.common.functions.ReduceFunction;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.api.java.tuple.Tuple3;
+import org.apache.flink.configuration.Configuration;
 import org.apache.flink.runtime.state.filesystem.FsStateBackend;
 import org.apache.flink.streaming.api.CheckpointingMode;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.CheckpointConfig.ExternalizedCheckpointCleanup;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
 import org.apache.flink.util.Collector;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 
 import com.alibaba.fastjson.JSON;
 import com.chelsea.covid.domain.Covid;
+import com.chelsea.covid.process.service.CovidService;
+import com.chelsea.covid.process.util.SpringUtil;
 
 /**
  * 疫情数据处理
@@ -233,7 +237,79 @@ public class CovidDataProcess {
                 return "北京".equals(covid.getProvinceShortName());
             }
         });
-        result4.print();
+        result1.addSink(new MysqlSinkFunction1());
+        result2.addSink(new MysqlSinkFunction2());
+        result3.addSink(new MysqlSinkFunction3());
+        result4.addSink(new MysqlSinkFunction4());
         env.execute();
-    }    
+    }
+    
+    static class MysqlSinkFunction1 extends RichSinkFunction<Covid> {
+        
+        private static final long serialVersionUID = 1L;
+        private static final CovidService covidService = SpringUtil.getInstance().getBean(CovidService.class);
+
+        @Override
+        public void open(Configuration parameters) throws Exception {}
+
+        @Override
+        public void close() throws Exception {}
+        
+        @Override
+        public void invoke(Covid value) throws Exception {
+            covidService.addCovid1(value);
+        }
+    }
+    
+    static class MysqlSinkFunction2 extends RichSinkFunction<Covid> {
+
+        private static final long serialVersionUID = 1L;
+        private static final CovidService covidService = SpringUtil.getInstance().getBean(CovidService.class);
+
+        @Override
+        public void open(Configuration parameters) throws Exception {}
+
+        @Override
+        public void close() throws Exception {}
+        
+        @Override
+        public void invoke(Covid value) throws Exception {
+            covidService.addCovid2(value);
+        }
+    }
+    
+    static class MysqlSinkFunction3 extends RichSinkFunction<Covid> {
+
+        private static final long serialVersionUID = 1L;
+        private static final CovidService covidService = SpringUtil.getInstance().getBean(CovidService.class);
+
+        @Override
+        public void open(Configuration parameters) throws Exception {}
+
+        @Override
+        public void close() throws Exception {}
+        
+        @Override
+        public void invoke(Covid value) throws Exception {
+            covidService.addCovid3(value);
+        }
+    }
+    
+    static class MysqlSinkFunction4 extends RichSinkFunction<Covid> {
+
+        private static final long serialVersionUID = 1L;
+        private static final CovidService covidService = SpringUtil.getInstance().getBean(CovidService.class);
+
+        @Override
+        public void open(Configuration parameters) throws Exception {}
+
+        @Override
+        public void close() throws Exception {}
+        
+        @Override
+        public void invoke(Covid value) throws Exception {
+            covidService.addCovid4(value);
+        }
+    }
+    
 }

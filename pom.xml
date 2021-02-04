@@ -51,5 +51,6 @@
     <module>covid-process</module>
     <module>covid-domain</module>
     <module>covid-common</module>
+    <module>covid-web</module>
   </modules>
 </project>
